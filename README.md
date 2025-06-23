@@ -13,7 +13,7 @@ FaceFinder is a web application that helps you locate photos of yourself in your
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/facefinder.git
+   git clone https://github.com/Soham-Kamathi/Drive_face_finder.git
    cd facefinder
    ```
 
