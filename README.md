@@ -66,9 +66,7 @@ const CLIENT_ID = 'YOUR_CLIENT_ID_HERE';
 - [face-api.js](https://github.com/justadudewhohacks/face-api.js): A JavaScript library for face detection and recognition.
 - [Google API Client Library](https://developers.google.com/api-client-library/javascript): For accessing Google Drive.
 
-## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
