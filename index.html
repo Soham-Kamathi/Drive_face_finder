@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FaceFinder - Locate Your Photos in Google Drive</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="face-api.min.js"></script>
+    <script>
+        // Monkey patch the getContext method to always set willReadFrequently to true
+        (function() {
+            const originalGetContext = HTMLCanvasElement.prototype.getContext;
+            HTMLCanvasElement.prototype.getContext = function(type, attributes) {
+                if (type === '2d') {
+                    // Always set willReadFrequently for 2d contexts
+                    attributes = attributes || {};
+                    attributes.willReadFrequently = true;
+                }
+                return originalGetContext.call(this, type, attributes);
+            };
+            console.log("Canvas getContext patched to optimize for multiple getImageData operations");
+        })();
+    </script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@latest/dist/heic2any.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <header>
+        <h1>FaceFinder</h1>
+        <p>Find and organize photos of you in your Google Drive</p>
+    </header>
+    
+    <div class="container">
+        <!-- Login Section -->
+        <div id="loginSection" class="card">
+            <div class="section-title">
+                <i>👋</i>
+                <h2>Welcome to FaceFinder</h2>
+            </div>
+            
+            <p>This application helps you instantly find photos containing your face across your Google Drive folders, using advanced face recognition technology.</p>
+            
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">🔍</div>
+                    <div class="feature-text">
+                        <h3>Smart Search</h3>
+                        <p>Quickly find photos of you across thousands of images</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🔒</div>
+                    <div class="feature-text">
+                        <h3>Private &amp; Secure</h3>
+                        <p>All processing happens in your browser - no data is uploaded</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-text">
+                        <h3>Fast Results</h3>
+                        <p>Advanced AI delivers accurate matches efficiently</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">💾</div>
+                    <div class="feature-text">
+                        <h3>Easy Download</h3>
+                        <p>Download all your matched photos in one click</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="auth-container">
+                <button id="signInButton" class="google-signin-button">
+                    <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48cGF0aCBkPSJNMTcuNiA5LjJsLS4xLTEuOEg5djMuNGg0LjhDMTMuNiAxMiAxMyAxMyAxMiAxMy42djIuMmgzYTguOCA4LjggMCAwIDAgMi42LTYuNnoiIGZpbGw9IiM0Mjg1RjQiIGZpbGwtcnVsZT0ibm9uemVybyIvPjxwYXRoIGQ9Ik05IDE4YzIuNCAwIDQuNS0uOCA2LTIuMmwtMy0yLjJhNS40IDUuNCAwIDAgMS04LTIuOUgxVjEzYTkgOSAwIDAgMCA4IDV6IiBmaWxsPSIjMzRBODUzIiBmaWxsLXJ1bGU9Im5vbnplcm8iLz48cGF0aCBkPSJNNCAxMC43YTUuNCA1LjQgMCAwIDEgMC0zLjRWNUgxYTkgOSAwIDAgMCAwIDhsMy0yLjN6IiBmaWxsPSIjRkJCQzA1IiBmaWxsLXJ1bGU9Im5vbnplcm8iLz48cGF0aCBkPSJNOSAzLjZjMS4zIDAgMi41LjQgMy40IDEuM0wxNSAyLjNBOSA5IDAgMCAwIDEgNWwzIDIuNGE1LjQgNS40IDAgMCAxIDUtMy43eiIgZmlsbD0iI0VBNDMzNSIgZmlsbC1ydWxlPSJub256ZXJvIi8+PHBhdGggZD0iTTAgMGgxOHYxOEgweiIvPjwvZz48L3N2Zz4=" alt="Google logo">
+                    Sign in with Google
+                </button>
+            </div>
+            
+            <div class="alert">
+                <strong>Privacy Note:</strong> This app processes all photos locally in your browser. Your photos are never uploaded to any external server.
+            </div>
+        </div>
+        
+        <!-- Drive Folder Selection Section -->
+        <div id="driveSection" class="card">
+            <div class="section-title">
+                <i>📁</i>
+                <h2>Select Google Drive Folder</h2>
+            </div>
+            
+            <p>Choose a folder containing the photos you want to search through:</p>
+            
+            <div class="action-container">
+                <button id="loadFoldersButton" class="button">
+                    <span class="button-icon">📂</span>
+                    Load My Folders
+                </button>
+            </div>
+            
+            <div class="drive-link-container">
+                <div class="section-divider">
+                    <span>OR</span>
+                </div>
+                <p>Enter a Google Drive folder link directly:</p>
+                <div class="input-group">
+                    <input type="text" id="driveLink" placeholder="https://drive.google.com/drive/folders/..." aria-label="Google Drive folder link">
+                    <button id="processDriveLinkButton" class="button">Use This Folder</button>
+                </div>
+                <div id="driveLinkError" class="error-message">
+                    Invalid Google Drive link. Please use a folder link from Google Drive.
+                </div>
+            </div>
+            
+            <div id="folderSelector">
+                <div class="input-group">
+                    <div class="input-icon">🔎</div>
+                    <input type="text" id="folderSearch" placeholder="Search folders..." class="folder-search" aria-label="Search folders">
+                </div>
+                
+                <div class="folder-list" id="folderList">
+                    <!-- Folders will be populated here -->
+                </div>
+                
+                <div id="selectedFolderInfo" class="status"></div>
+            </div>
+            
+            <div id="driveError" class="error-message">
+                There was an error loading your folders. Please try again.
+            </div>
+            
+            <div class="step-buttons">
+                <button id="signOutButton" class="button button-warning">
+                    <span class="button-icon">↩️</span>
+                    Sign Out
+                </button>
+                <button id="goToFaceStep" class="button">
+                    Next: Upload Reference Face
+                    <span class="button-icon">→</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Face Reference Section -->
+        <div id="faceSection" class="card">
+            <div class="section-title">
+                <i>👤</i>
+                <h2>Upload Reference Face</h2>
+            </div>
+            
+            <p>Upload a clear photo of your face to use as a reference for matching:</p>
+            
+            <div class="reference-photo">
+                <div class="file-input-container">
+                    <label for="referenceInput" class="button">
+                        <span class="button-icon">📷</span>
+                        Choose Reference Photo
+                    </label>
+                    <input type="file" id="referenceInput" class="file-input" accept="image/*">
+                </div>
+                <div class="preview-container">
+                    <img id="referencePreview" alt="Reference face preview">
+                    <canvas id="referenceCanvas"></canvas>
+                </div>
+            </div>
+            
+            <div id="referenceError" class="error-message">
+                <span class="error-icon">⚠️</span>
+                We couldn't detect a face in your reference photo. Please try a clearer image with a front-facing view.
+            </div>
+            
+            <div class="alert">
+                <strong>Tip:</strong> For best results, use a clear, front-facing photo with good lighting and minimal background distractions.
+            </div>
+            
+            <div class="step-buttons">
+                <button id="backToDriveStep" class="button button-warning">
+                    <span class="button-icon">←</span>
+                    Back to Folder Selection
+                </button>
+                <button id="processButton" class="button button-secondary">
+                    <span class="button-icon">🔍</span>
+                    Find My Photos
+                </button>
+            </div>
+            
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <div class="status" id="progressStatus">Loading models...</div>
+            </div>
+        </div>
+        
+        <!-- Results Section -->
+        <div id="resultsSection" class="card results-section">
+            <div class="section-title">
+                <i>🖼️</i>
+                <h2>Results</h2>
+            </div>
+            
+            <p>Photos where you appear:</p>
+            
+            <div class="results-grid" id="resultsGrid"></div>
+            
+            <div class="no-results" id="noResults">
+                <div class="no-results-icon">🔍</div>
+                <p>No photos of you were found in the selected folder.</p>
+            </div>
+            
+            <div class="download-all" id="downloadAllContainer">
+                <button id="downloadAllButton" class="button">
+                    <span class="button-icon">💾</span>
+                    Download All Matched Photos
+                </button>
+            </div>
+            
+            <div class="step-buttons">
+                <button id="newSearchButton" class="button">
+                    <span class="button-icon">🔄</span>
+                    Start New Search
+                </button>
+            </div>
+        </div>
+        
+        <footer>
+            <p>FaceFinder - Find photos of you in Google Drive with advanced face recognition</p>
+            <p>All processing occurs locally in your browser</p>
+        </footer>
+    </div>
+</body>
+</html>
+
